@@ -1,6 +1,6 @@
 # HangarShell
 
-Interacte [Hanger](https://hangar.papermc.io/) with command line.
+Interacte [Hanger](https://hangar.papermc.io/) use shell script.
 
 ## Usage
 
