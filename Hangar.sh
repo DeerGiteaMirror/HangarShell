@@ -28,10 +28,14 @@ API_KEY=$1
 TOKEN=""
 PROJECT_NAME=""
 
+# ENDPOINTS
+AUTH_ENDPOINT="$HANGAR_API/$HANGAR_API_VERSION/authenticate"
+EDIT_MAIN_PAGE_ENDPOINT="$HANGAR_API/$HANGAR_API_VERSION/pages/editmain/$PROJECT_NAME"
+ALL_VERSIONS_ENDPOINT="$HANGAR_API/$HANGAR_API_VERSION/projects/$PROJECT_NAME/versions"
+
 # function: Authorization(key)->token
 function get_token() {
     log_info "Authenticating..."
-    AUTH_ENDPOINT="$HANGAR_API/$HANGAR_API_VERSION/authenticate"
     POST_URL="$AUTH_ENDPOINT?apiKey=$API_KEY"
     RESPONSE=$(curl -s -w "%{http_code}" -X POST $POST_URL)
     HTTP_STATUS=${RESPONSE: -3}
@@ -49,6 +53,30 @@ function get_token() {
     else
         log_info "Authenticated successfully."
         log_info "Token: $TOKEN"
+    fi
+}
+
+CHANNEL_LIST=""
+function get_channel_list() {
+    RESPONSE=$(curl -s -w "%{http_code}" -X GET $ALL_VERSIONS_ENDPOINT -H "Authorization: Bearer $TOKEN")
+    HTTP_STATUS=${RESPONSE: -3}
+    RESPONSE_BODY=${RESPONSE:0:${#RESPONSE}-3}
+    if [ "$HTTP_STATUS" -eq 403 ]; then
+        log_error "code: $HTTP_STATUS, message: $RESPONSE_BODY"
+        log_error "Not enough permissions to use this endpoint."
+        return -1
+    elif [ "$HTTP_STATUS" -eq 401 ]; then
+        log_error "code: $HTTP_STATUS, message: $RESPONSE_BODY"
+        log_error "Unauthorized."
+        return -1
+    elif [ "$HTTP_STATUS" -eq 200 ]; then
+        CHANNEL_LIST=$(echo $RESPONSE_BODY | jq -r '.result[].channel.name')
+        log_info "Channel list: $CHANNEL_LIST"
+        return 0
+    else
+        log_error "code: $HTTP_STATUS, message: $RESPONSE_BODY"
+        log_error "Unknown error."
+        return -1
     fi
 }
 
@@ -70,7 +98,6 @@ function update_main_page_seq(){
         log_info "Cancel update."
         return
     fi
-    EDIT_MAIN_PAGE_ENDPOINT="$HANGAR_API/$HANGAR_API_VERSION/pages/editmain/$PROJECT_NAME"
     # body
     # {
     # content*: string
